@@ -1,0 +1,12 @@
+{
+  "lane": "Lane 2 \u2014 Refresh / Content Opportunity Scoring",
+  "rule_definition": "stale(days_since_last_update >= 180) * visible(impressions_90d >= 500) * impressions_90d",
+  "reason_code": "stale_visible_decay_risk",
+  "action_label": "refresh_review",
+  "n_eligible_rows": 17,
+  "total_rows": 30000,
+  "base_rate": 0.5420666666666667,
+  "precision_at_10": 1.0,
+  "precision_at_20": 0.9,
+  "precision_at_50": 0.68
+}
