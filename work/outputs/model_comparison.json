@@ -1,0 +1,117 @@
+{
+  "split_strategy": "client_grouped_holdout_80_20",
+  "random_seed": 42,
+  "train_rows": 23837,
+  "train_clients": 25,
+  "test_rows": 6163,
+  "test_clients": 7,
+  "test_base_rate": 0.5109524582184002,
+  "models": [
+    {
+      "Model": "Population Base Rate",
+      "P@10": 0.5109524582184002,
+      "P@20": 0.5109524582184002,
+      "P@50": 0.5109524582184002,
+      "P@100": 0.5109524582184002,
+      "ROC-AUC": 0.5,
+      "Avg Precision": 0.5109524582184002
+    },
+    {
+      "Model": "Week 4 Rule Baseline (on test)",
+      "P@10": 0.2,
+      "P@20": 0.35,
+      "P@50": 0.42,
+      "P@100": 0.39,
+      "ROC-AUC": 0.4885203337110211,
+      "Avg Precision": 0.4827455809450777
+    },
+    {
+      "Model": "Logistic Regression",
+      "P@10": 0.8,
+      "P@20": 0.75,
+      "P@50": 0.74,
+      "P@100": 0.75,
+      "ROC-AUC": 0.615025087750759,
+      "Avg Precision": 0.6069723177927451
+    },
+    {
+      "Model": "Decision Tree (depth 3)",
+      "P@10": 0.6,
+      "P@20": 0.5,
+      "P@50": 0.6,
+      "P@100": 0.58,
+      "ROC-AUC": 0.5950667289285969,
+      "Avg Precision": 0.5681029724873831
+    },
+    {
+      "Model": "Random Forest",
+      "P@10": 0.5,
+      "P@20": 0.55,
+      "P@50": 0.6,
+      "P@100": 0.6,
+      "ROC-AUC": 0.6094181424549309,
+      "Avg Precision": 0.5901611390903664
+    },
+    {
+      "Model": "HistGradientBoosting",
+      "P@10": 0.9,
+      "P@20": 0.9,
+      "P@50": 0.8,
+      "P@100": 0.76,
+      "ROC-AUC": 0.6199047716984125,
+      "Avg Precision": 0.6183615008678922
+    }
+  ],
+  "top_features": [
+    {
+      "feature": "days_with_impressions",
+      "importance_mean": 0.07038904296927104,
+      "importance_std": 0.0057857671758244494
+    },
+    {
+      "feature": "avg_position",
+      "importance_mean": 0.03427631557855852,
+      "importance_std": 0.003010391945207848
+    },
+    {
+      "feature": "content_age_days",
+      "importance_mean": 0.021052611630458008,
+      "importance_std": 0.0057402720078689705
+    },
+    {
+      "feature": "scroll_rate",
+      "importance_mean": 0.015585662931084132,
+      "importance_std": 0.002930909051887873
+    },
+    {
+      "feature": "ctr",
+      "importance_mean": 0.0128934366977853,
+      "importance_std": 0.0019443979979512033
+    },
+    {
+      "feature": "log_impressions_90d",
+      "importance_mean": 0.004342403853091437,
+      "importance_std": 0.0021146117480232277
+    },
+    {
+      "feature": "log_sessions_90d",
+      "importance_mean": 0.004107994679404403,
+      "importance_std": 0.0005087464524975836
+    },
+    {
+      "feature": "log_clicks_90d",
+      "importance_mean": 0.00353392343594352,
+      "importance_std": 0.0005402824682576422
+    },
+    {
+      "feature": "engagement_rate",
+      "importance_mean": 0.0031806942936409067,
+      "importance_std": 0.0007745549347974745
+    },
+    {
+      "feature": "days_with_sessions",
+      "importance_mean": 0.0023995059510763415,
+      "importance_std": 0.0005972093553390308
+    }
+  ]
+}

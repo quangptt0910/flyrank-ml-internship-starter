@@ -35,3 +35,8 @@ __pycache__/
 venv/
 .env
 .vscode/
+
+docs/w05_model_plan.md
+work/w05_history.md
+work/w05_model_plan.md
+works/
