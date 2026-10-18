@@ -1,0 +1,20 @@
+{
+  "total_catalog_scored": 30000,
+  "held_out_test_items": 6163,
+  "action_distribution": {
+    "core_content_refresh": 7417,
+    "monitor": 6978,
+    "snippet_and_ctr_refresh": 5951,
+    "protect_and_monitor": 3878,
+    "expand_and_depth_refresh": 3383,
+    "ux_and_structure_refresh": 2393
+  },
+  "confidence_distribution": {
+    "medium": 11778,
+    "low": 11289,
+    "high": 6933
+  },
+  "top_10_queue_mean_priority": 90.03044908087188,
+  "top_50_queue_mean_priority": 88.89373987970293,
+  "held_out_test_precision_at_50": 0.66
+}

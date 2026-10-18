@@ -1,0 +1,16 @@
+{
+  "assignment": "ML-09 Validation and Research Claim Audit",
+  "dataset": "content_refresh_anonymized.csv",
+  "naive_split_auc": 0.782955667540604,
+  "honest_split_auc": 0.6199047716984125,
+  "auc_memorization_gap": 0.16305089584219146,
+  "leakage_test_injected_auc": 0.9999987356557511,
+  "leakage_test_clean_auc": 0.6199047716984125,
+  "claims_audited": 3,
+  "claim_language_verified": [
+    "observed",
+    "measured",
+    "directional",
+    "decision-support"
+  ]
+}
