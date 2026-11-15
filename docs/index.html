@@ -249,7 +249,7 @@
     <div class="abstract-box">
       <h2>Abstract</h2>
       <p>
-        Editorial teams can refresh only a few dozen pages a week, so the useful question is which pages to look at first: can a model trained on observable search and engagement signals rank pages that are losing impressions above a transparent hand-written rule, on clients it has never seen? We used the FlyRank ML Internship starter slice (30,000 anonymized pages from 32 clients, trailing 90-day Google Search Console and GA4 metrics) and labelled a page as declining when its last-30-day impressions fell more than 20% versus the previous 30 days. A gradient-boosted classifier was compared with our Week 4 striking-distance rule on identical client-grouped test sets, repeated over 20 different client splits so that no single lucky split carries the result. Across those splits the model's top-10 queue averaged <strong>89% declining pages</strong> (range 80–100%) against <strong>40%</strong> for the rule, and its top-50 averaged <strong>81%</strong> against <strong>47%</strong>, beating the rule on every split, while overall ranking quality stayed moderate (ROC-AUC 0.70 ± 0.06). We turn the scores into a ranked, reason-coded review queue for human editors: a decision-support tool for where to look first, not evidence that a refresh will cause recovery.
+        FlyRank publishes and monitors content across many client websites, where pages that once ranked can quietly lose search visibility while editors can review only a few dozen a week, so the useful question is which pages to look at first: can a model trained on observable search and engagement signals rank pages that are losing impressions above a transparent hand-written rule, on clients it has never seen? We used the FlyRank ML Internship starter slice (30,000 anonymized pages from 32 clients, trailing 90-day Google Search Console and GA4 metrics) and labelled a page as declining when its last-30-day impressions fell more than 20% versus the previous 30 days. A gradient-boosted classifier was compared with our Week 4 striking-distance rule on identical client-grouped test sets, repeated over 20 different client splits so that no single lucky split carries the result. Across those splits the model's top-10 queue averaged <strong>89% declining pages</strong> (range 80–100%) against <strong>40%</strong> for the rule, and its top-50 averaged <strong>81%</strong> against <strong>47%</strong>, beating the rule on every split, while overall ranking quality stayed moderate (ROC-AUC 0.70 ± 0.06). We turn the scores into a ranked, reason-coded review queue for human editors: a decision-support tool for where to look first, not evidence that a refresh will cause recovery.
       </p>
     </div>
 
@@ -258,6 +258,18 @@
       <p>
         Picture a content team with 20,000 published pages and time to review 20 of them this week. Each slot spent on a page that is fine is a slot not spent on one that is slipping. The decision this work supports is narrow and concrete: <strong>which pages go into this week's review queue, and in what order.</strong>
       </p>
+      <h3>The FlyRank case</h3>
+      <p>
+        FlyRank researches, writes and publishes content directly into client websites, then watches Google Search Console and GA4 data to keep that content performing. Across many clients and thousands of pages, the recurring problem is <em>decay</em>: a page ranks, then rankings slip and clicks fall, and it is easy to notice too late.
+      </p>
+      <p>
+        Today, pages are flagged for attention with hand-written rules: a health score, quick-win tags, needs-attention flags. These are if-this-then-that rules with hand-picked thresholds. They are transparent and they run in production, but rules get harder to tune as signals multiply and interact. This paper asks whether a trained model can order the review queue better than a rule of that kind.
+      </p>
+      <p>
+        One boundary matters. FlyRank's production flags are deliberately <strong>not</strong> in the internship data, so this paper does <strong>not</strong> compare against them. The baseline is our own Week 4 rule, built in the same style from the same observable signals. The results show what a model adds over a rule of that kind. They are not a verdict on FlyRank's product.
+      </p>
+
+      <h3>Why a rule is not enough</h3>
       <p>
         Our Week 4 baseline encoded a common SEO intuition: review pages in "striking distance" (average position 4–20) that are consistently visible, ordered by impressions. The ordering is the weak point. It pushes the largest pages to the top, and large, steady pages are often not the ones losing ground. On the held-out clients used in Week 5, the rule's top 10 contained only 2 declining pages, fewer than picking at random would give.
       </p>
@@ -419,6 +431,14 @@
         <li><strong>Try the cheap fix first on striking-distance pages.</strong> Pages at positions 4–20 with CTR below 0.35% get a title and snippet rewrite before anything heavier.</li>
         <li><strong>Leave strong top-10 pages alone</strong> unless they show their own warning signs.</li>
         <li><strong>Measure every refresh</strong> against similar pages that were not refreshed, over 30–60 days. That is the only way to turn this ranking into evidence of impact.</li>
+      </ol>
+
+      <h3>What this means for FlyRank's refresh workflow</h3>
+      <ol>
+        <li><strong>Use the model to <em>order</em> the review queue, not to replace review.</strong> Editors still decide. The model decides what they look at first, and every entry shows its reason codes.</li>
+        <li><strong>Run it next to the existing flags before trusting it.</strong> Score the same pages with both, then compare how many of each top 20 turn out to be declining over the following weeks. That is the comparison this paper could not make.</li>
+        <li><strong>Re-earn the result forward in time.</strong> The warehouse release has daily data. Training on earlier months and testing on later ones, on unseen clients, would turn this from "looks like a decliner" into a real forecast.</li>
+        <li><strong>Close the loop.</strong> Log which flagged pages were refreshed and how they moved over the next 30–60 days compared with similar pages that were not. Over time that measures the impact of refreshing, which this paper cannot claim.</li>
       </ol>
 
       <figure>

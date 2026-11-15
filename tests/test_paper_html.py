@@ -82,3 +82,12 @@ def test_paper_has_no_known_wrong_or_overclaimed_text():
     for bad in ["Release: March 2026", "15,335", "0.40 * stale", "Infinite ROI",
                 "standard commercial heuristic", "No-Go", "proves"]:
         assert bad not in html, f"Paper still contains: {bad}"
+
+
+def test_ml12_paper_ties_findings_to_flyrank_case():
+    html = DOCS_INDEX_PATH.read_text(encoding="utf-8")
+    abstract = html[html.index('class="abstract-box"'):html.index("</div>", html.index('class="abstract-box"'))]
+    assert "FlyRank" in abstract, "Abstract must tie the work to FlyRank's content problem"
+    assert "The FlyRank case" in html, "Introduction must contain the FlyRank case study"
+    assert "What this means for FlyRank" in html, "Recommendations must map back to FlyRank's workflow"
+    assert "does <strong>not</strong> compare against them" in html, "Must state production flags were not compared"

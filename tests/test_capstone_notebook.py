@@ -51,3 +51,35 @@ def test_capstone_is_fully_executed():
         assert cell.execution_count is not None, f"Cell {i} has not been executed (execution_count is null)"
         for output in cell.get("outputs", []):
             assert output.get("output_type") != "error", f"Cell {i} failed with error: {output.get('ename')}: {output.get('evalue')}"
+
+
+def _closing_markdown():
+    with open(CAPSTONE_NOTEBOOK_PATH, "r", encoding="utf-8") as f:
+        nb = nbformat.read(f, as_version=4)
+    return [c.source for c in nb.cells if c.cell_type == "markdown"]
+
+
+def test_ml12_demo_outline_and_cuts_close_the_notebook():
+    """ML-12: demo outline is the closing section, with the two shareable cuts right under it."""
+    md = _closing_markdown()
+    assert md[-2].startswith("## 8. Demo outline"), "Demo outline must be the second-to-last markdown cell"
+    assert md[-1].startswith("## 9. Shareable cuts"), "Shareable cuts must sit right under the outline"
+    for beat in ["Question", "Method", "One chart", "One honest result", "One recommendation"]:
+        assert f"**{beat}**" in md[-2], f"Demo outline missing beat: {beat}"
+    assert "### Social post" in md[-1] and "### Employer summary" in md[-1]
+
+
+def test_ml12_cuts_numbers_match_receipts():
+    """Numbers quoted in the shareable cuts must match the 20-split receipt."""
+    rob = json.loads(Path("work/outputs/robustness_summary.json").read_text(encoding="utf-8"))
+    g = rob["grouped"]
+    pct = lambda x: f"{int(x * 100 + 0.5)}%"  # round half up, as written in the paper (0.885 -> 89%)
+    model_p10 = pct(g['HistGradientBoosting']['P@10']['mean'])
+    rule_p10 = pct(g['Week 4 rule']['P@10']['mean'])
+    ratio = f"{g['HistGradientBoosting']['P@10']['mean'] / g['Week 4 rule']['P@10']['mean']:.1f}×"
+    n = rob["n_grouped_splits"]
+    cuts = _closing_markdown()[-1]
+    for needle in [model_p10, rule_p10, ratio, f"all {n}", f"{n} different client splits"]:
+        assert needle in cuts, f"Shareable cuts missing receipt-backed value: {needle}"
+    url = Path("submission/paper_url.txt").read_text(encoding="utf-8").strip()
+    assert url in cuts, "Social post must link the deployed paper"
