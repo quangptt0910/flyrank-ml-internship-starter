@@ -102,3 +102,11 @@ def test_paper_strict_feature_numbers_match_receipts():
         assert needle in html, f"Paper missing strict-feature {m}: {needle}"
     assert "4.4 Part of the gain comes from overlapping windows" in html
     assert "w03_feature_leakage_check.ipynb" in html
+
+
+def test_paper_has_top20_review_and_model_card_link():
+    html = DOCS_INDEX_PATH.read_text(encoding="utf-8")
+    assert "A by-hand look at the top 20" in html
+    assert "work/model_card.md" in html
+    rule_auc = _receipt("robustness_summary.json")["grouped"]["Week 4 rule"]["ROC-AUC"]
+    assert f"{rule_auc['mean']:.2f} ± {rule_auc['std']:.2f}" in html

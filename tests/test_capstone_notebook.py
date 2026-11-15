@@ -84,3 +84,22 @@ def test_ml12_cuts_numbers_match_receipts():
         assert needle in cuts, f"Shareable cuts missing receipt-backed value: {needle}"
     url = Path("submission/paper_url.txt").read_text(encoding="utf-8").strip()
     assert url in cuts, "Social post must link the deployed paper"
+
+
+def test_model_card_exists_and_matches_receipts():
+    card = Path("work/model_card.md").read_text(encoding="utf-8")
+    rob = json.loads(Path("work/outputs/robustness_summary.json").read_text(encoding="utf-8"))["grouped"]
+    for name in ["HistGradientBoosting", "HistGradientBoosting (strict features)", "Week 4 rule"]:
+        assert f"{rob[name]['P@10']['mean']:.2f}" in card, name
+    for section in ["## Intended use", "## Not for", "## Where it breaks", "## Keep it honest in use"]:
+        assert section in card, section
+    assert "https://flyrank.ai" in card
+
+
+def test_top20_review_present_in_notebook():
+    with open(CAPSTONE_NOTEBOOK_PATH, "r", encoding="utf-8") as f:
+        nb = nbformat.read(f, as_version=4)
+    review = [c for c in nb.cells if c.cell_type == "code" and "Rebuild the W07 queue" in c.source]
+    assert review, "Top-20 review cell missing"
+    out = "".join(o.get("text", "") for o in review[0].outputs)
+    assert "matches the W07 receipt" in out and "Declining in top 20:" in out
