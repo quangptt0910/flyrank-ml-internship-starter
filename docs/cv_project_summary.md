@@ -1,58 +1,79 @@
 # FlyRank ML Internship — Project Summary & CV Guide
 
-## 1. Executive Summary (The "Elevator Pitch" for Interviews)
+All numbers are from held-out clients and come from receipts in `work/outputs/`. Unless marked, they are means over
+20 client-grouped splits. Quote them as written; don't round them up.
 
-> Built an enterprise-grade content opportunity and decay ranking engine on 30,000 multi-tenant content items across 32 client domains (Google Search Console & GA4 data). Replaced an existing volume-biased heuristic rule that failed on unseen domains (20% Precision@10) with modern tree ensembles and linear benchmarks, achieving **90.0% Precision@10** and **80.0% Precision@50** on held-out client domains (a **4.5× improvement**). Diagnosed and eliminated a **16.3-point memorization leakage gap** using client-grouped holdout validation, implemented positive-control leakage verification, and extracted interpretable reason codes for human editorial decision-support.
+## 1. Elevator Pitch
 
----
-
-## 2. Ready-to-Use CV / Resume Bullet Points
-
-### Option A: Impact & Engineering-Focused (Recommended for ML Engineer / Data Scientist roles)
-
-* **Machine Learning & System Design:** Engineered an end-to-end content decay prioritization engine across 30,000 content items from 32 enterprise domains, framing decision-support ranking as probabilistic binary classification.
-* **Model Progression & Benchmarking:** Implemented a rigorous progression from transparent heuristics (W04 baseline) to L2 Logistic Regression, printable depth-3 Decision Trees, Random Forests, and HistGradientBoosting, boosting **Precision@10 from 20.0% to 90.0%** (4.5× lift) and **Precision@50 from 42.0% to 80.0%** on held-out domains.
-* **Honest Validation & Leakage Prevention:** Uncovered and eliminated a **16.3-point optimistic memorization gap** (ROC-AUC 0.783 → 0.620) by replacing naive random splits with client-grouped holdout validation (`GroupShuffleSplit`), proving models generalize to novel customer domains rather than memorizing domain authority.
-* **Positive-Control Audit Harness:** Architected a programmatic leakage audit with positive-control injection (injecting ground-truth target arithmetic to verify test sensitivity at AUC >0.999), enforcing strict temporal feature-window isolation.
-* **Model Interpretability & Error Analysis:** Conducted test-set permutation importance (scoring on Average Precision) and examined individual false positives/negatives, demonstrating that activity consistency (`days_with_impressions`), striking-distance rank (positions 4–20), and staleness predict decay far more accurately than raw traffic scale.
+> I built a page-refresh ranking for SEO editors on 30,000 anonymized pages from 32 clients (Search Console + GA4).
+> On clients the model never saw, its top-10 list held **72–89% declining pages**, against **40%** for an
+> impressions-ordered rule (test base rate 49%). The range runs from a strict, leakage-cautious feature set up to the
+> full 90-day features. I showed that random splits inflate AUC by about **0.075** (0.78 vs 0.70) compared with
+> client-grouped splits. I ran positive-control leakage checks, and the ranking is shipped with reason codes and a
+> human-review workflow.
 
 ---
 
-### Option B: Concise 3-Bullet Format (Compact Resume Space)
+## 2. CV Bullet Points
 
-* **Enterprise Ranking Engine:** Developed a content refresh opportunity model on 30k multi-tenant pages across 32 domains, boosting top-10 triage precision from **20.0% to 90.0%** over the production heuristic rule.
-* **Rigorous Validation & Leakage Defense:** Designed client-grouped holdout splits to eliminate a **16.3% domain-memorization bias**, and built an automated audit harness with temporal window isolation and positive-control leakage testing.
-* **Explainability & Editorial Decision-Support:** Extracted transparent decision rules and permutation importances across 24 features (GSC + GA4), providing interpretable reason codes that decouple decay probability from raw impression volume.
+### Option A: Detailed
+
+* **Ranking system:** framed weekly refresh prioritization as probability ranking over 30,000 pages from 32 clients.
+  The model's scores are blended with traffic and position into a 0–100 review queue with reason codes and suggested actions.
+* **Model vs baseline:** compared a transparent rule, logistic regression, a decision tree, a random forest and
+  gradient boosting. Over 20 client-grouped splits, gradient boosting raised top-10 precision from **0.40 to 0.89**
+  (**0.72** with strict pre-label features) and ROC-AUC from 0.54 to 0.70 (0.63 strict).
+* **Honest validation:** measured a **+0.075 AUC** inflation from random vs client-grouped splits, averaged over many
+  splits. An early single-split estimate of 0.163 was corrected after the repeat.
+* **Leakage auditing:** ran positive controls (AUC 0.998 when the label's 30-day windows are added back). Found and
+  quantified an overlapping-window leak, then reported a strict model that keeps about two thirds of the lift.
+* **Error analysis:** found that wrong picks are healthy pages rather than borderline ones, that ranking skill
+  concentrates near the top of Google, and that one client dominated a global queue. That led to the recommendation
+  of per-client queues.
+
+### Option B: Three Bullets
+
+* **Refresh ranking:** built a page-decline ranking on 30k pages / 32 clients. Top-10 precision was 0.72–0.89 on unseen
+  clients vs 0.40 for an impressions-ordered rule (base rate 0.49).
+* **Validation & leakage:** used client-grouped repeated splits (random splits inflate AUC by about 0.075), positive-control
+  leakage tests, and a strict pre-label-window feature set as a cautious estimate.
+* **Decision support:** shipped a 0–100 priority with reason codes and actions, a by-hand top-20 review (16/20
+  declining), a model card, and a public write-up with stated limits.
 
 ---
 
-## 3. Project Technical Specifications & Keywords
+## 3. Technical Specifications
 
 | Category | Details |
 |---|---|
-| **Domain** | Search Engine Optimization (SEO), Search Performance, Decision-Support Systems |
-| **Data Scope** | 30,000 rows × 44 columns, 32 pseudonymized client domains, GSC + GA4 signals |
-| **ML Models** | Heuristic Baseline, Logistic Regression (L2), Decision Tree (depth 3), Random Forest (200 trees), HistGradientBoosting |
-| **Validation Design** | Client-Grouped Holdout (`GroupShuffleSplit` on `client_id`, 80/20 train/test) |
-| **Key Metrics** | Precision@10 (90.0%), Precision@20 (90.0%), Precision@50 (80.0%), Precision@100 (76.0%), ROC-AUC (0.620), PR-AUC (0.618) |
-| **Tech Stack** | Python, scikit-learn, pandas, numpy, Jupyter, nbconvert, Git |
-| **Methodologies** | Data contracts, leakage auditing, positive-control testing, permutation importance, subgroup analysis, claim ladder |
+| **Domain** | SEO content refresh, decision support |
+| **Data scope** | 30,000 rows × 44 columns, 32 pseudonymized clients, GSC + GA4 (starter slice, not the 79M-row warehouse) |
+| **Models** | Rule baseline, logistic regression, decision tree (depth 3), random forest, HistGradientBoosting |
+| **Validation** | `GroupShuffleSplit` on `client_id`, 80/20, repeated 20 times (seed 42) |
+| **Key metrics (20-split mean)** | P@10 0.89 / P@50 0.81 / ROC-AUC 0.70; strict 0.72 / 0.68 / 0.63; rule 0.40 / 0.47 / 0.54 |
+| **Tech stack** | Python, scikit-learn, pandas, numpy, matplotlib, Jupyter, nbconvert, pytest, Git |
+| **Methods** | Data contract, leakage audit with positive controls, permutation importance, per-client error analysis, claim ladder |
 
 ---
 
-## 4. Interview Talking Points (STAR Method)
+## 4. Interview Talking Points (STAR)
 
 ### Situation
-Enterprise SEO teams managing thousands of URLs face severe operational bottlenecks: they only have the bandwidth to review 20–50 pages per week. The incumbent rule sorted pages by raw impression volume and striking-distance rank, but it failed on unseen domains because it prioritized massive, actively defended cornerstone pages rather than decaying content.
+SEO editors can review about 10–50 pages a week. A natural rule (striking-distance pages, biggest first) mostly
+surfaces healthy pages.
 
 ### Task
-Frame, train, validate, and interpret an honest machine learning system that accurately prioritizes pages facing genuine decay risk, ensuring the model generalizes to completely new, unseen client websites without data leakage.
+Rank pages by likelihood of decline in a way that holds up on clients the model has never seen, without leakage, and
+make the output usable by an editor.
 
 ### Action
-1. **Data Contract & Window Isolation:** Isolated trailing 90-day search/traffic aggregates from recent 30-day trend computation windows, strictly excluding label-derived fields.
-2. **Model Progression:** Built a baseline rule, then trained linear and non-linear models with custom handling for missingness-by-content-type and sentinel position values (`avg_position = 0`).
-3. **Validation Audit:** Tested models under both random 80/20 and client-grouped 80/20 splits to quantify domain memorization, discovering a 16.3-point AUC inflation in the naive split.
-4. **Leakage Attack:** Executed a positive-control test by deliberately injecting `trend_pct` to verify the test harness caught leakage before stripping it.
+1. Wrote a data contract that excludes label-derived and 30-day-window columns, and tested it with positive controls.
+2. Audited popular single signals client by client. None held cleanly, which motivated a multi-signal model.
+3. Built the rule baseline, then compared four model families on held-out clients.
+4. Repeated the client-grouped split 20 times and added a strict feature set to bound the overlapping-window leak.
+5. Turned probabilities into a review queue with reason codes and actions, and checked the top 20 by hand.
 
 ### Result
-Achieved **90.0% Precision@10** and **80.0% Precision@50** on held-out domains (compared to 20.0% and 42.0% for the baseline rule). Permutation feature importance revealed that page activity consistency, position tier, and staleness are the primary predictors of decay, producing an actionable queue with transparent reason codes for human editors.
+On unseen clients, top-10 precision was 0.72–0.89 vs 0.40 for the rule, and AUC 0.63–0.70 vs 0.54. These are
+observational, single-snapshot results, framed as decision support. There is no causal claim. The next step is
+forward-in-time validation on the warehouse.

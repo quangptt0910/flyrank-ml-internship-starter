@@ -392,10 +392,10 @@
       <h3>4.3 Random row splits overstate performance</h3>
       <figure>
         <img src="figures/results_random_vs_grouped_auc.png" alt="Strip chart: ROC-AUC of the same model under 5 random row splits (mean 0.78) and 20 client-grouped splits (mean 0.70)." loading="lazy">
-        <figcaption>Figure 2. The same model scores ROC-AUC 0.78 on average when pages are split at random and 0.70 when whole clients are held out. Mixing a client's pages into both train and test inflates the score by about 0.08.</figcaption>
+        <figcaption>Figure 2. The same model scores ROC-AUC 0.78 on average when pages are split at random and 0.70 when whole clients are held out. Mixing a client's pages into both train and test inflates the score by about 0.075.</figcaption>
       </figure>
       <p>
-        In Week 6 we reported a 0.163 AUC gap (0.783 random vs 0.620 grouped). That figure paired one random split with the hard seed-42 client split. Averaged over many splits, the inflation is about <strong>0.08 AUC</strong>. That is still large enough that a random split would mislead anyone onboarding a new client.
+        In Week 6 we reported a 0.163 AUC gap (0.783 random vs 0.620 grouped). That figure paired one random split with the hard seed-42 client split. Averaged over many splits, the inflation is about <strong>0.075 AUC</strong>. That is still large enough that a random split would mislead anyone onboarding a new client.
       </p>
 
       <h3>4.4 Part of the gain comes from overlapping windows</h3>
