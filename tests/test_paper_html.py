@@ -50,3 +50,35 @@ def test_public_safety_no_client_names_or_leakage():
     # Must not contain unhashed private client references
     assert "client_0" not in html_content.lower()
     assert "predicted google's algorithm" not in html_content.lower()
+
+
+def _receipt(name):
+    import json
+    return json.loads((Path("work/outputs") / name).read_text(encoding="utf-8"))
+
+
+def test_paper_headline_numbers_match_receipts():
+    """Every headline number on the page must come from a receipt in work/outputs, not be typed by hand."""
+    html = DOCS_INDEX_PATH.read_text(encoding="utf-8")
+    rob = _receipt("robustness_summary.json")["grouped"]
+    hgb, rule = rob["HistGradientBoosting"], rob["Week 4 rule"]
+    expected = [
+        f"{hgb['P@10']['mean']:.2f} ± {hgb['P@10']['std']:.2f}",
+        f"{hgb['P@50']['mean']:.2f} ± {hgb['P@50']['std']:.2f}",
+        f"{rule['P@10']['mean']:.2f} ± {rule['P@10']['std']:.2f}",
+        f"{rule['P@50']['mean']:.2f} ± {rule['P@50']['std']:.2f}",
+        f"{hgb['ROC-AUC']['mean']:.2f} ± {hgb['ROC-AUC']['std']:.2f}",
+    ]
+    single = {m["Model"]: m for m in _receipt("model_comparison.json")["models"]}
+    for k in (10, 20, 50, 100):
+        n = round(single["Week 4 Rule Baseline (on test)"][f"P@{k}"] * k)
+        expected.append(f"({n}/{k})")
+    for needle in expected:
+        assert needle in html, f"Paper is missing receipt-backed value: {needle}"
+
+
+def test_paper_has_no_known_wrong_or_overclaimed_text():
+    html = DOCS_INDEX_PATH.read_text(encoding="utf-8")
+    for bad in ["Release: March 2026", "15,335", "0.40 * stale", "Infinite ROI",
+                "standard commercial heuristic", "No-Go", "proves"]:
+        assert bad not in html, f"Paper still contains: {bad}"

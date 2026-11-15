@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Prioritizing Enterprise Content Refreshes: Machine Learning vs Heuristic Baselines on Held-Out Search Telemetry</title>
-  <meta name="description" content="Research paper evaluating out-of-sample machine learning models against commercial heuristic rules for enterprise search content refresh triage across 30,000 URLs.">
+  <title>Which Pages to Refresh First</title>
+  <meta name="description" content="A learned ranking vs a hand-written rule for choosing which content pages to refresh first, evaluated on held-out clients across 20 client splits of the anonymized FlyRank ML Internship starter data (30,000 pages).">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Charter:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -237,324 +237,242 @@
 <body>
   <div class="container">
     <header>
-      <h1>Prioritizing Enterprise Content Refreshes: Machine Learning vs Heuristic Baselines on Held-Out Search Telemetry</h1>
+      <h1>Which Pages Should an Editor Refresh First? A Learned Ranking vs a Hand-Written Rule on Held-Out Search Data</h1>
       <div class="metadata">
         <span><strong>Author:</strong> Quang Pham (ML Intern, FlyRank)</span>
-        <span><strong>Date:</strong> October 2026</span>
+        <span><strong>Date:</strong> November 2026</span>
         <span><strong>Track:</strong> Lane 2 — Refresh / Opportunity Scoring</span>
-        <span><strong>Dataset:</strong> 30,000 URLs across 32 Client Domains</span>
+        <span><strong>Data:</strong> FlyRank ML Internship starter slice — 30,000 pages, 32 clients</span>
       </div>
     </header>
 
-    <!-- Section 1: Title & Abstract -->
     <div class="abstract-box">
       <h2>Abstract</h2>
       <p>
-        How can enterprise search marketing teams prioritize high-leverage content refreshes across catalogs exceeding 30,000 URLs without falling into high-volume evergreen traps or wasting human hours on ghost pages? Using a cross-client search intelligence dataset of 30,000 URLs across 32 enterprise domains, we developed and audited a gradient-boosted opportunity scoring system benchmarked against standard commercial heuristic rules. On held-out client domains evaluated under strict <code>GroupShuffleSplit</code> validation, our <code>HistGradientBoostingClassifier</code> achieved <strong>90.0% Precision@10</strong> and <strong>80.0% Precision@50</strong>, substantially outperforming the rule baseline (Precision@10 of 20.0%, 4.5× lift over baseline; base decay rate 51.1%). Auditing split leakage revealed a 16.3-point overoptimistic AUC gap in naive random splits (AUC 0.783 down to 0.620 in grouped evaluation), demonstrating that cross-domain generalization requires strict domain-level isolation. We synthesize these validated decay risks into a 5-action operational playbook with human-in-the-loop safeguards and concrete retrain triggers, providing a defensible decision-support queue for editorial intervention.
+        Editorial teams can refresh only a few dozen pages a week, so the useful question is which pages to look at first: can a model trained on observable search and engagement signals rank pages that are losing impressions above a transparent hand-written rule, on clients it has never seen? We used the FlyRank ML Internship starter slice (30,000 anonymized pages from 32 clients, trailing 90-day Google Search Console and GA4 metrics) and labelled a page as declining when its last-30-day impressions fell more than 20% versus the previous 30 days. A gradient-boosted classifier was compared with our Week 4 striking-distance rule on identical client-grouped test sets, repeated over 20 different client splits so that no single lucky split carries the result. Across those splits the model's top-10 queue averaged <strong>89% declining pages</strong> (range 80–100%) against <strong>40%</strong> for the rule, and its top-50 averaged <strong>81%</strong> against <strong>47%</strong>, beating the rule on every split, while overall ranking quality stayed moderate (ROC-AUC 0.70 ± 0.06). We turn the scores into a ranked, reason-coded review queue for human editors: a decision-support tool for where to look first, not evidence that a refresh will cause recovery.
       </p>
     </div>
 
-    <!-- Section 2: Introduction / Problem -->
     <section id="introduction">
-      <h2>1. Introduction & Problem Statement</h2>
+      <h2>1. Introduction &amp; Problem Statement</h2>
       <p>
-        In enterprise content management, high-volume catalogs suffer from severe triage fatigue. A typical content strategy team managing 10,000 to 50,000 published URLs can realistically refresh and audit only 15 to 25 articles per weekly sprint. When human editorial hours are heavily constrained, the cost of an incorrect recommendation is high: allocating $500–$800 in writer hours to rewrite an evergreen page that is merely fluctuating within normal noise, while neglecting a high-value Page 1 asset in rapid organic decay, leads to unrecoverable traffic loss.
+        Picture a content team with 20,000 published pages and time to review 20 of them this week. Each slot spent on a page that is fine is a slot not spent on one that is slipping. The decision this work supports is narrow and concrete: <strong>which pages go into this week's review queue, and in what order.</strong>
       </p>
       <p>
-        Standard industry practices rely on commercial heuristic scoring formulas (e.g. sorting by raw trailing traffic drops or keyword volume). As established in our preliminary baseline audits, these naive rules suffer from the <em>"volume trap"</em>: they systematically surface the largest, most stable evergreen hub pages as false positives, while ignoring striking-distance assets (positions 4 to 20) on the verge of falling off Google's Page 1.
+        Our Week 4 baseline encoded a common SEO intuition: review pages in "striking distance" (average position 4–20) that are consistently visible, ordered by impressions. The ordering is the weak point. It pushes the largest pages to the top, and large, steady pages are often not the ones losing ground. On the held-out clients used in Week 5, the rule's top 10 contained only 2 declining pages, fewer than picking at random would give.
       </p>
       <p>
-        This research evaluates whether machine learning models trained on 90-day multi-channel search telemetry can reliably rank URLs by historical decay risk on completely unseen client domains, outperforming standard heuristic baselines while establishing transparent operational boundaries.
+        <strong>Research question.</strong> On clients the model has never seen, does a model trained on observable 90-day search and engagement signals rank declining pages above the Week 4 rule, and does that hold across many different client splits rather than just one?
       </p>
     </section>
 
-    <!-- Section 3: Data -->
     <section id="data">
-      <h2>2. Data Provenance & Safety</h2>
-      <p>
-        This study was conducted on the <strong>FlyRank ML Internship dataset</strong> (Release: March 2026), comprising 30,000 anonymized URLs spanning 32 enterprise domains. The data integrates Google Search Console (GSC) organic visibility with Google Analytics 4 (GA4) behavioral telemetry.
-      </p>
-      <h3>Telemetry Windows & Base Rate</h3>
-      <p>
-        The primary feature matrix is computed from trailing 90-day aggregate windows (<code>*_90d</code>), tracking organic impressions, clicks, sessions, average position, engagement rate, and scroll completion rates. The binary classification target is defined as:
-      </p>
-      <div class="formula-block">
-        y = 1 if trend_direction == 'down' else 0
-      </div>
-      <p>
-        Across the full 30,000-page catalog, the empirical base decay rate is <strong>51.1%</strong> (15,335 declining pages vs 14,665 stable/improving pages). This base rate serves as our critical reference anchor: any model or rule scoring below 51.1% precision in its top ranks is worse than an unweighted coin flip.
-      </p>
-      <h3>Public Safety & Leakage Prevention</h3>
-      <p>
-        To ensure strict publication safety and prevent future-window label contamination, all client identifiers, domain names, and search queries were cryptographically hashed. Furthermore, the following columns were permanently blacklisted from all feature pipelines:
-      </p>
+      <h2>2. Data</h2>
+      <h3>Which data, stated plainly</h3>
       <ul>
-        <li><code>trend_direction</code> and <code>trend_pct</code>: The target labels derived from future 30-day performance comparisons.</li>
-        <li>All <code>*_last_30d</code> and <code>*_prev_30d</code> fields: Direct components of the target delta calculation.</li>
-        <li><code>client_id</code> and <code>content_id</code>: Excluded from feature sets to prevent models from memorizing domain-specific authority biases.</li>
-        <li><code>provider_used</code> and <code>model_used</code>: CMS operational metadata irrelevant to organic search demand.</li>
+        <li><strong>Used for every model and number here:</strong> the anonymized <em>starter slice</em> of the FlyRank ML Internship dataset, <code>content_refresh_anonymized.csv</code>. It is one table with 30,000 rows × 44 columns, one row per content item, from 32 pseudonymized clients. It combines Google Search Console visibility with GA4 engagement.</li>
+        <li><strong>Not used for modeling:</strong> the ~79M-row warehouse release (<code>flyrank_pseudonymized_warehouse_release_v20260703</code>). It was only queried for the Week 3 data contract. Re-earning these results on it is future work.</li>
       </ul>
+
+      <h3>Date windows and label</h3>
+      <ul>
+        <li>Features are aggregates over a <strong>trailing 90-day window ending at export time</strong>. The starter slice does not publish calendar dates.</li>
+        <li>The label compares impressions in the <strong>last 30 days</strong> with the <strong>30 days before that</strong>. A page is <em>declining</em> (<code>trend_direction = 'down'</code>) when the change is below −20%.</li>
+        <li>Base rate: <strong>54.2%</strong> of all pages (16,262 of 30,000) are declining. On individual 7-client test sets it ranges from 26% to 61%, which is why every result below is shown next to its own base rate.</li>
+      </ul>
+
+      <h3>What we excluded, and why</h3>
+      <ul>
+        <li><code>trend_direction</code>, <code>trend_pct</code>: they define the label.</li>
+        <li>All <code>*_last_30d</code> and <code>*_prev_30d</code> columns: the label is computed from them.</li>
+        <li><code>client_id</code>, <code>content_id</code>: pseudonyms used only to group the train/test split, never as features.</li>
+        <li><code>provider_used</code>, <code>model_used</code>: tooling metadata, not search evidence.</li>
+      </ul>
+      <p>
+        The slice contains no client names, domains, URLs, page titles or search queries, and this page reports only aggregates.
+      </p>
     </section>
 
-    <!-- Section 4: Methodology -->
     <section id="methodology">
-      <h2>3. Methodology & Validation Design</h2>
+      <h2>3. Methodology</h2>
+      <h3>Features and assumption</h3>
       <p>
-        A central vulnerability in search intelligence modeling is <em>domain leakage</em>. In standard random train/test splits, pages from the same client domain are distributed across both training and test partitions. Because all pages on a domain share technical site architecture, backlink equity, and brand authority, random splits produce artificially inflated evaluation metrics that collapse when applied to a new website.
+        We used 24 features: 18 numeric (log traffic, CTR, active days, average position, keyword volume, CPC and competition, content age, days since update, word count, engagement and scroll rates, AI-referral share, plus <code>has_</code> flags for missing values) and 6 categorical buckets (content type, intent, competition level, freshness, position tier and word-count tier). The working assumption is that a page's 90-day profile carries information about whether its last 30 days look worse than the 30 before. The windows overlap in time, so this tests <em>association within one snapshot</em>, not a forecast of a later period.
       </p>
-      <h3>Client-Holdout Grouped Validation</h3>
-      <p>
-        To simulate true production deployment to new customer domains, we enforced a strict <code>GroupShuffleSplit(test_size=0.20, random_state=42)</code> grouped on <code>client_id</code>:
-      </p>
-      <ul>
-        <li><strong>Training Set:</strong> 23,837 URLs across 25 client domains.</li>
-        <li><strong>Held-Out Test Set:</strong> 6,163 URLs across 7 completely unseen client domains.</li>
-      </ul>
-      <h3>Model Architecture</h3>
-      <p>
-        We configured a 24-feature pipeline (18 numeric features scaled via <code>StandardScaler</code> and 6 categorical features encoded via <code>OneHotEncoder</code>) paired with a <code>HistGradientBoostingClassifier</code> (max depth 5, min samples leaf 25, balanced class weights). This model was benchmarked against the standard commercial heuristic rule:
-      </p>
+
+      <h3>Baseline: the Week 4 rule, unchanged</h3>
       <div class="formula-block">
-        Rule Score = 0.40 * stale_content + 0.30 * low_engagement + 0.30 * striking_distance_rank
+        score = [4 ≤ position ≤ 20] × [active days ≥ 45] × [impressions ≥ 300] × impressions_90d
       </div>
+      <p>Pages that pass all three gates are ordered by impressions, and every other page scores 0.</p>
+
+      <h3>Model</h3>
+      <p>
+        <code>HistGradientBoostingClassifier</code> (max depth 5, min leaf 25, balanced class weights) after scaling numeric features and one-hot encoding categories. Logistic regression is reported alongside as a simpler reference.
+      </p>
+
+      <h3>Validation design</h3>
+      <ol>
+        <li><strong>Client-grouped holdout.</strong> Twenty percent of <em>clients</em> are held out (<code>GroupShuffleSplit</code> on <code>client_id</code>), so every test page comes from a client the model never saw. This mirrors onboarding a new client.</li>
+        <li><strong>Repeated over 20 client splits.</strong> A test set holds only 7 clients, and the model family was chosen in Week 5 on one such split. Repeating the full comparison over 20 different client splits shows the spread and reduces dependence on that one split.</li>
+        <li><strong>Same test pages for every method.</strong> The model and the rule are always scored on identical pages, next to that split's base rate.</li>
+      </ol>
+
+      <h3>Leakage checks</h3>
+      <ul>
+        <li>A code-level guard fails the run if any label source, 30-day window component or ID appears in the feature list.</li>
+        <li>Positive control (Week 6): injecting the label arithmetic on purpose pushes AUC to ≈1.000, so the harness can detect leakage. The clean pipeline scores far below that.</li>
+        <li>Random-row vs client-grouped comparison (Section 4.3) measures how much seeing the same client in training inflates scores.</li>
+      </ul>
     </section>
 
-    <!-- Section 5: Results -->
     <section id="results">
-      <h2>4. Results: Machine Learning vs Heuristic Baseline</h2>
-      <p>
-        Both the <code>HistGradientBoostingClassifier</code> and the baseline rule were evaluated on the identical held-out client test set (6,163 URLs, 7 unseen client domains, base decay rate 51.1%).
-      </p>
-      
+      <h2>4. Results: Model vs Rule on the Same Held-Out Clients</h2>
+
+      <h3>4.1 Across 20 client splits, the model's queue is about twice as accurate</h3>
+      <figure>
+        <img src="figures/results_precision_at_k.png" alt="Dot-and-range chart: share of declining pages in the top 10, 20, 50 and 100 for the model and the Week 4 rule across 20 client splits, with the average base rate as a dashed line." loading="lazy">
+        <figcaption>Figure 1. Share of each top-k queue that was declining, on held-out clients. Dot = mean over 20 client splits, line = min–max. The model's top 10 averaged 0.89 and the rule's 0.40. The rule's average sits <em>below</em> the base rate at every k.</figcaption>
+      </figure>
+
       <div class="table-container">
         <table>
           <thead>
-            <tr>
-              <th>Evaluation Metric</th>
-              <th>Rule Baseline</th>
-              <th>HistGradientBoosting (Ours)</th>
-              <th>Absolute Lift</th>
-              <th>Relative Gain</th>
-            </tr>
+            <tr><th>20 client splits (mean ± sd)</th><th>Week 4 rule</th><th>Logistic regression</th><th>Gradient boosting</th></tr>
           </thead>
           <tbody>
-            <tr>
-              <td><strong>Precision @ 10</strong></td>
-              <td>0.200 (2/10)</td>
-              <td><strong>0.900 (9/10)</strong></td>
-              <td>+0.700</td>
-              <td><strong>4.50× (350% lift)</strong></td>
-            </tr>
-            <tr>
-              <td><strong>Precision @ 20</strong></td>
-              <td>0.350 (7/20)</td>
-              <td><strong>0.900 (18/20)</strong></td>
-              <td>+0.550</td>
-              <td><strong>2.57× (157% lift)</strong></td>
-            </tr>
-            <tr>
-              <td><strong>Precision @ 50</strong></td>
-              <td>0.440 (22/50)</td>
-              <td><strong>0.800 (40/50)</strong></td>
-              <td>+0.360</td>
-              <td><strong>1.82× (82% lift)</strong></td>
-            </tr>
-            <tr>
-              <td><strong>Precision @ 100</strong></td>
-              <td>0.490 (49/100)</td>
-              <td><strong>0.760 (76/100)</strong></td>
-              <td>+0.270</td>
-              <td><strong>1.55× (55% lift)</strong></td>
-            </tr>
-            <tr>
-              <td><strong>ROC-AUC</strong></td>
-              <td>0.521</td>
-              <td><strong>0.620</strong></td>
-              <td>+0.099</td>
-              <td>+19.0%</td>
-            </tr>
-            <tr>
-              <td><strong>Test Base Rate</strong></td>
-              <td>0.511</td>
-              <td>0.511</td>
-              <td>—</td>
-              <td><em>Honest Anchor</em></td>
-            </tr>
+            <tr><td>Precision@10</td><td>0.40 ± 0.13</td><td>0.82 ± 0.12</td><td><strong>0.89 ± 0.08</strong></td></tr>
+            <tr><td>Precision@20</td><td>0.44 ± 0.11</td><td>0.80 ± 0.09</td><td><strong>0.88 ± 0.09</strong></td></tr>
+            <tr><td>Precision@50</td><td>0.47 ± 0.14</td><td>0.78 ± 0.08</td><td><strong>0.81 ± 0.11</strong></td></tr>
+            <tr><td>Precision@100</td><td>0.47 ± 0.14</td><td>0.76 ± 0.09</td><td><strong>0.78 ± 0.11</strong></td></tr>
+            <tr><td>ROC-AUC</td><td>0.55 ± 0.04</td><td>0.67 ± 0.05</td><td><strong>0.70 ± 0.06</strong></td></tr>
+            <tr><td>Test base rate</td><td colspan="3">0.49 on average (range 0.26–0.61)</td></tr>
           </tbody>
         </table>
       </div>
-
       <p>
-        <strong>Key Empirical Takeaway:</strong> In the critical operational window (Top 10 to 50 URLs representing one weekly editorial sprint), the machine learning model achieves <strong>80.0% to 90.0% precision</strong>. By contrast, the rule baseline collapses to <strong>20.0% Precision@10</strong>—substantially worse than the 51.1% baseline decay rate—because it is tricked by the high-volume evergreen trap.
+        The model beat the rule on all 20 splits for every metric, and its top-50 beat that split's own base rate on all 20. Single splits still vary a lot. Model Precision@50 ranged from 0.58 to 0.96, so a given week on a given client can look much worse than the average.
       </p>
 
-      <h3>The Split Leakage Audit</h3>
+      <h3>4.2 The original Week 5 split was a hard draw</h3>
       <p>
-        In Week 6, we executed an adversarial validation audit to measure domain leakage. Under an un-grouped random split, the identical model appeared to score an AUC of <strong>0.783</strong>. When evaluated properly under client-grouped holdout, the true out-of-sample AUC dropped to <strong>0.620</strong>. This <strong>16.3-point overoptimistic gap</strong> proves that random splits in multi-tenant search data test domain memorization rather than generalized ranking decline patterns.
+        Our first comparison used a single split (seed 42: 7 held-out clients, 6,163 pages, base rate 51.1%):
+      </p>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr><th>Seed-42 split</th><th>Week 4 rule</th><th>Gradient boosting</th><th>Base rate</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Precision@10</td><td>0.20 (2/10)</td><td><strong>0.90 (9/10)</strong></td><td>0.51</td></tr>
+            <tr><td>Precision@20</td><td>0.35 (7/20)</td><td><strong>0.90 (18/20)</strong></td><td>0.51</td></tr>
+            <tr><td>Precision@50</td><td>0.42 (21/50)</td><td><strong>0.80 (40/50)</strong></td><td>0.51</td></tr>
+            <tr><td>Precision@100</td><td>0.39 (39/100)</td><td><strong>0.76 (76/100)</strong></td><td>0.51</td></tr>
+            <tr><td>ROC-AUC</td><td>0.49</td><td><strong>0.62</strong></td><td>0.50</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        That split was the rule's worst Precision@10 among the 20 and one of the model's lowest AUCs. The "9 of 10 vs 2 of 10" contrast is real, but the 4.5× ratio it suggests is not typical. The 20-split average (0.89 vs 0.40, about 2.2×) is the fairer comparison.
       </p>
 
+      <h3>4.3 Random row splits overstate performance</h3>
       <figure>
-        <img src="figures/playbook_priority_distribution.png" alt="Scatter plot comparing composite priority score to model decay probability">
-        <figcaption><strong>Figure 1:</strong> Distribution of Composite Priority Score (0–100) versus raw Model Decay Probability P(decline) (sampled N=3,000). The composite score balances decay risk with business traffic footprint and SERP ranking leverage.</figcaption>
+        <img src="figures/results_random_vs_grouped_auc.png" alt="Strip chart: ROC-AUC of the same model under 5 random row splits (mean 0.78) and 20 client-grouped splits (mean 0.70)." loading="lazy">
+        <figcaption>Figure 2. The same model scores ROC-AUC 0.78 on average when pages are split at random and 0.70 when whole clients are held out. Mixing a client's pages into both train and test inflates the score by about 0.08.</figcaption>
       </figure>
+      <p>
+        In Week 6 we reported a 0.163 AUC gap (0.783 random vs 0.620 grouped). That figure paired one random split with the hard seed-42 client split. Averaged over many splits, the inflation is about <strong>0.08 AUC</strong>. That is still large enough that a random split would mislead anyone onboarding a new client.
+      </p>
     </section>
 
-    <!-- Section 6: Limitations -->
     <section id="limitations">
-      <h2>5. Limitations & Honest Framing</h2>
-      <p>
-        In accordance with the <code>writing-honest-claims</code> guidelines, we explicitly state the boundaries of what this research does and does not establish:
-      </p>
+      <h2>5. Limitations &amp; Honest Framing</h2>
       <ul>
-        <li><strong>Decision-Support, Not Causal Lift:</strong> The model outputs an observational probability of historical decline (<code>P(decline)</code>). It does not prove that updating a page will cause Google to restore traffic; actual recovery depends entirely on the editorial and technical quality of the intervention.</li>
-        <li><strong>No Reverse-Engineering of Google's Algorithm:</strong> The model discovers empirical correlations within historical GSC/GA4 telemetry across 32 private enterprise portfolios. It does not reflect inside knowledge of Google's proprietary ranking algorithms.</li>
-        <li><strong>90-Day Telemetry Lag:</strong> The model operates on 90-day aggregate windows. Acute short-term anomalies (such as a 48-hour site-wide tracking pixel failure or viral news cycles) cannot be reliably diagnosed through trailing quarterly averages.</li>
-        <li><strong>Catalog Domain Calibration:</strong> The dataset is calibrated on informational, commercial, and comparative blog/article assets. Dynamic e-commerce SKU catalogs subject to out-of-stock inventory events require dedicated inventory availability telemetry.</li>
+        <li><strong>Starter slice, not the warehouse.</strong> All results come from 30,000 pages and 32 clients. They have not been reproduced on the ~79M-row warehouse release.</li>
+        <li><strong>One snapshot, not a forecast.</strong> Features and label come from the same export. The model ranks pages that <em>look like</em> recent decliners and has not been tested on a later, separate time period.</li>
+        <li><strong>Decision support, not causal lift.</strong> A high score means "this page resembles pages that lost impressions", not "refreshing it will bring traffic back". No intervention was tested.</li>
+        <li><strong>Few clients per test.</strong> Each test set holds 7 clients, and a top 10 is 10 pages. That is why we report means and ranges over 20 splits.</li>
+        <li><strong>Model chosen with a test split in view.</strong> Gradient boosting was picked in Week 5 on the seed-42 split. Repeating over 20 splits reduces this optimism but does not remove it. A clean answer needs clients that were never looked at.</li>
+        <li><strong>Moderate overall ranking.</strong> A mean ROC-AUC of 0.70 means the model is much stronger at the very top of the queue than across the whole catalog. Use it to order a short review list, not to label every page.</li>
+        <li><strong>Noisy label.</strong> Small pages cross ±20% through ordinary fluctuation, so a "declining" label is not always a real problem.</li>
+        <li><strong>No inside knowledge of Google.</strong> These are observed associations in one portfolio's GSC and GA4 data. They say nothing about how Google ranks pages.</li>
       </ul>
     </section>
 
-    <!-- Section 7: Ranked Recommendations -->
     <section id="recommendations">
-      <h2>6. Ranked Recommendations & Action Playbook</h2>
+      <h2>6. Ranked Recommendations &amp; Action Playbook</h2>
+      <h3>From probability to a review queue</h3>
       <p>
-        To prevent the operational failure of sorting purely by probability (which prioritizes zero-traffic ghost pages), we transform raw model decline probabilities into a 0–100 <strong>Composite Priority Score</strong>:
+        Sorting by decline probability alone surfaces tiny pages with little traffic at stake. The Week 7 playbook blends three signals into a 0–100 priority. The weights are a judgment call, not fitted:
       </p>
       <div class="formula-block">
-        Priority Score = [ 0.60 * P(decline) + 0.25 * (ln(1 + impressions) / max_ln_imp) + 0.15 * Position Leverage ] * 100
+        priority = 100 × [ 0.60 × P(decline) + 0.25 × ln(1+impressions) / max ln(1+impressions) + 0.15 × position leverage ]
       </div>
       <p>
-        <strong>Position Leverage</strong> reflects real-world SERP CTR dynamics:
+        Position leverage is 1.00 for positions 4–10, 0.90 for 10–20, 0.60 for 1–3, 0.40 for 20–50 and 0.15 beyond. The blend costs some precision. On the seed-42 held-out clients, the queue's top 50 was <strong>66%</strong> declining, against 80% for the raw model and 42% for the rule. In exchange, it surfaces pages with more traffic at stake.
       </p>
-      <ul>
-        <li><strong>Positions 4.0–10.0 (Weight: 1.00):</strong> Urgent defense zone before falling off Google's Page 1.</li>
-        <li><strong>Positions 10.1–20.0 (Weight: 0.90):</strong> Striking distance opportunity zone with high-upside CTR potential.</li>
-        <li><strong>Positions 1.0–3.9 (Weight: 0.60):</strong> Dominant authority assets; protect and monitor without destabilizing edits.</li>
-        <li><strong>Positions 20.1–50.0 (Weight: 0.40):</strong> Deeper content restructuring required.</li>
-        <li><strong>Positions &gt; 50 (Weight: 0.15):</strong> Long-tail backlog.</li>
-      </ul>
+
+      <h3>What to do first</h3>
+      <ol>
+        <li><strong>Start each week from the top of the queue, not from the biggest pages.</strong> Across 20 client splits, the model's top 10 held about 89% declining pages and the impressions-ordered rule about 40%.</li>
+        <li><strong>Try the cheap fix first on striking-distance pages.</strong> Pages at positions 4–20 with CTR below 0.35% get a title and snippet rewrite before anything heavier.</li>
+        <li><strong>Leave strong top-10 pages alone</strong> unless they show their own warning signs.</li>
+        <li><strong>Measure every refresh</strong> against similar pages that were not refreshed, over 30–60 days. That is the only way to turn this ranking into evidence of impact.</li>
+      </ol>
 
       <figure>
-        <img src="figures/playbook_action_mix.png" alt="Bar chart showing breakdown of tactical interventions across 30,000 URLs">
-        <figcaption><strong>Figure 2:</strong> Tactical Intervention Breakdown across the 30,000 URL catalog. Actionable diagnoses prevent editorial teams from treating all decaying pages with generic rewrites.</figcaption>
+        <img src="figures/playbook_action_mix.png" alt="Bar chart of how the 30,000 pages are split across the six playbook actions." loading="lazy">
+        <figcaption>Figure 3. Suggested actions across the 30,000-page catalog. About a quarter of pages (23%) get no action beyond monitoring.</figcaption>
       </figure>
 
-      <h3>5-Action Editorial Taxonomy & Cost/Value Framework</h3>
       <div class="table-container">
         <table>
           <thead>
-            <tr>
-              <th>Tactical Action</th>
-              <th>Catalog Share</th>
-              <th>Est. Effort</th>
-              <th>Diagnostic Reason Trigger</th>
-              <th>Expected ROI</th>
-            </tr>
+            <tr><th>Action</th><th>Trigger</th><th>Pages</th><th>Planning estimate*</th></tr>
           </thead>
           <tbody>
-            <tr>
-              <td><code>snippet_and_ctr_refresh</code></td>
-              <td>19.8% (5,951 URLs)</td>
-              <td>~1.5 hrs</td>
-              <td>Striking distance (pos 4–20) with CTR &lt; 0.35%</td>
-              <td><strong>High ROI</strong> (Fast CTR lift)</td>
-            </tr>
-            <tr>
-              <td><code>ux_and_structure_refresh</code></td>
-              <td>8.0% (2,393 URLs)</td>
-              <td>~2.0 hrs</td>
-              <td>Healthy visits but scroll rate &lt; 20%</td>
-              <td><strong>Medium-High ROI</strong> (Engagement lift)</td>
-            </tr>
-            <tr>
-              <td><code>expand_and_depth_refresh</code></td>
-              <td>11.3% (3,383 URLs)</td>
-              <td>~4.0 hrs</td>
-              <td>Visible impressions but word count &lt; 1,500</td>
-              <td><strong>High ROI</strong> (Captures subtopics)</td>
-            </tr>
-            <tr>
-              <td><code>core_content_refresh</code></td>
-              <td>24.7% (7,417 URLs)</td>
-              <td>~6.0 hrs</td>
-              <td>High decay risk (p &ge; 0.50) on content &gt; 180 days old</td>
-              <td><strong>Critical Defense</strong> (Defends traffic)</td>
-            </tr>
-            <tr>
-              <td><code>protect_and_monitor</code></td>
-              <td>12.9% (3,878 URLs)</td>
-              <td>0 hrs</td>
-              <td>Top 10 rank with low decay risk (p &lt; 0.35)</td>
-              <td><strong>Infinite ROI</strong> (Prevents errors)</td>
-            </tr>
-            <tr>
-              <td><code>monitor</code></td>
-              <td>23.3% (6,978 URLs)</td>
-              <td>0 hrs</td>
-              <td>Routine background monitoring</td>
-              <td><strong>Baseline</strong></td>
-            </tr>
+            <tr><td><code>snippet_and_ctr_refresh</code></td><td>Position 4–20 and CTR &lt; 0.35%</td><td>5,951 (19.8%)</td><td>~1.5 h</td></tr>
+            <tr><td><code>ux_and_structure_refresh</code></td><td>Visible page, scroll rate &lt; 20%</td><td>2,393 (8.0%)</td><td>~2 h</td></tr>
+            <tr><td><code>expand_and_depth_refresh</code></td><td>Visible page, &lt; 1,500 words</td><td>3,383 (11.3%)</td><td>~4 h</td></tr>
+            <tr><td><code>core_content_refresh</code></td><td>P(decline) ≥ 0.50 and &gt; 180 days old</td><td>7,417 (24.7%)</td><td>~6 h</td></tr>
+            <tr><td><code>protect_and_monitor</code></td><td>Top-10 position, P(decline) &lt; 0.35</td><td>3,878 (12.9%)</td><td>leave alone</td></tr>
+            <tr><td><code>monitor</code></td><td>None of the above</td><td>6,978 (23.3%)</td><td>—</td></tr>
           </tbody>
         </table>
       </div>
+      <p style="font-size:0.9rem;color:var(--text-muted);font-family:var(--font-sans);">*Effort hours are planning assumptions for scheduling, not measured values.</p>
 
       <figure>
-        <img src="figures/playbook_top_reasons.png" alt="Horizontal bar chart showing top diagnostic reason codes">
-        <figcaption><strong>Figure 3:</strong> Frequency distribution of primary diagnostic reason codes across the enterprise portfolio, providing editors with human-readable rationale for every queue entry.</figcaption>
+        <img src="figures/playbook_top_reasons.png" alt="Bar chart of the most frequent reason codes attached to queue entries." loading="lazy">
+        <figcaption>Figure 4. Most frequent reason codes in the queue. Every entry carries a human-readable reason, so an editor can see why a page was flagged.</figcaption>
       </figure>
-
-      <div class="callout">
-        <strong>Strict Human Review Protocol ("No-Go" Automation List):</strong>
-        <br>Per curriculum safety requirements, certain operations must <em>never</em> be automated by machine learning:
-        <ul>
-          <li>❌ <strong>No LLM Auto-Publishing:</strong> Direct automated rewriting and deployment without editorial review creates unacceptable hallucination and brand compliance risks.</li>
-          <li>❌ <strong>No Automated 404 Pruning:</strong> Bulk retiring pages based on decay scores destroys historical backlink equity and internal link architecture.</li>
-          <li>❌ <strong>No Automated 301 Redirect Loops:</strong> Algorithmic redirect generation causes canonical cannibalization and indexing penalties.</li>
-          <li>❌ <strong>No Automated Snippet Edits on Positions 1–3:</strong> Top-3 crown jewel pages must be locked against automated metadata mutation.</li>
-        </ul>
-      </div>
     </section>
 
-    <!-- Section 8: Reproducibility -->
     <section id="reproducibility">
-      <h2>7. Reproducibility & Pipeline Traceability</h2>
-      <p>
-        All code, data preprocessing harnesses, baseline rules, and model pipelines are fully reproducible via our open repository.
-      </p>
+      <h2>7. Reproducibility</h2>
       <ul>
         <li><strong>Repository:</strong> <a href="https://github.com/quangptt0910/flyrank-ml-internship-starter">github.com/quangptt0910/flyrank-ml-internship-starter</a></li>
-        <li><strong>Capstone Notebook:</strong> <a href="https://github.com/quangptt0910/flyrank-ml-internship-starter/blob/main/work/notebooks/capstone.ipynb"><code>work/notebooks/capstone.ipynb</code></a></li>
-        <li><strong>Weekly Notebook Audit Trail:</strong>
-          <ul>
-            <li><code>work/notebooks/w04_baseline_score.ipynb</code>: Heuristic baseline rule formulation and volume trap audit.</li>
-            <li><code>work/notebooks/w05_model.ipynb</code>: Multi-model training and GroupShuffleSplit client benchmark.</li>
-            <li><code>work/notebooks/w06_validation_audit.ipynb</code>: Leakage attack harness and 16.3-pt random split audit.</li>
-            <li><code>work/notebooks/w07_action_playbook.ipynb</code>: Composite priority score and queue export.</li>
-          </ul>
-        </li>
-        <li><strong>Receipt Files:</strong>
-          <ul>
-            <li><code>work/outputs/model_comparison.json</code>: Ground truth precision and AUC metrics.</li>
-            <li><code>work/outputs/validation_audit_summary.json</code>: Grouped vs random split evaluation audit.</li>
-            <li><code>work/outputs/action_playbook_summary.json</code>: 30,000-row catalog action distribution.</li>
-          </ul>
-        </li>
-        <li><strong>Environment & Seeds:</strong> Python 3.13.12, scikit-learn 1.7.1, pandas 2.2.3, <code>RANDOM_SEED = 42</code>.</li>
+        <li><strong>Paper notebook (every number on this page):</strong> <a href="https://github.com/quangptt0910/flyrank-ml-internship-starter/blob/main/work/notebooks/capstone.ipynb"><code>work/notebooks/capstone.ipynb</code></a>. It recomputes the single-split table, asserts it matches the Week 5 receipt, runs the 20-split and random-split comparisons, and writes the figures.</li>
+        <li><strong>Week-by-week notebooks:</strong>
+          <a href="https://github.com/quangptt0910/flyrank-ml-internship-starter/blob/main/work/notebooks/w04_baseline_score.ipynb">W4 rule baseline</a> ·
+          <a href="https://github.com/quangptt0910/flyrank-ml-internship-starter/blob/main/work/notebooks/w05_model.ipynb">W5 models</a> ·
+          <a href="https://github.com/quangptt0910/flyrank-ml-internship-starter/blob/main/work/notebooks/w06_validation_audit.ipynb">W6 validation audit</a> ·
+          <a href="https://github.com/quangptt0910/flyrank-ml-internship-starter/blob/main/work/notebooks/w07_action_playbook.ipynb">W7 action playbook</a></li>
+        <li><strong>Receipts:</strong> <code>work/outputs/model_comparison.json</code>, <code>validation_audit_summary.json</code>, <code>robustness_summary.json</code> and <code>action_playbook_summary.json</code>.</li>
+        <li><strong>To rerun:</strong> clone the repo, <code>pip install -r requirements.txt</code>, then run <code>capstone.ipynb</code> top to bottom (about a minute on a laptop). Seed 42 throughout. Tested with Python 3.13, scikit-learn 1.7.1, pandas 2.3.2 and numpy 2.4.3.</li>
       </ul>
     </section>
 
-    <!-- Section 9: Acknowledgments & Data Credit -->
     <section id="acknowledgments">
-      <h2>8. Acknowledgments & Data Credit</h2>
+      <h2>8. Acknowledgments &amp; Data Credit</h2>
       <p>
-        This research paper was developed as part of the <strong>FlyRank Applied Machine Learning Internship</strong> program.
-      </p>
-      <p>
-        <strong>Data Attribution:</strong> Built on the FlyRank ML Internship dataset (<a href="https://flyrank.ai" target="_blank" rel="noopener noreferrer">https://flyrank.ai</a>). We express our gratitude to the FlyRank engineering and research teams for providing anonymized enterprise search telemetry and supporting honest, reproducible machine learning research.
+        This work was done as part of the FlyRank ML Internship. <strong>Built on the FlyRank ML Internship dataset</strong> (<a href="https://flyrank.ai" target="_blank" rel="noopener">https://flyrank.ai</a>). Thanks to the FlyRank team for preparing an anonymized release of real search data for learning and research.
       </p>
     </section>
 
     <footer>
-      <p>&copy; 2026 Quang Pham. Published under the FlyRank ML Internship Program. All data anonymized for public research safety.</p>
+      <p>© 2026 Quang Pham. Data anonymized by FlyRank; this page reports aggregates only.</p>
     </footer>
   </div>
 </body>
