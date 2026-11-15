@@ -79,7 +79,8 @@ def test_ml12_cuts_numbers_match_receipts():
     ratio = f"{g['HistGradientBoosting']['P@10']['mean'] / g['Week 4 rule']['P@10']['mean']:.1f}×"
     n = rob["n_grouped_splits"]
     cuts = _closing_markdown()[-1]
-    for needle in [model_p10, rule_p10, ratio, f"all {n}", f"{n} different client splits"]:
+    strict_p10 = f"{g['HistGradientBoosting (strict features)']['P@10']['mean']:.0%}"
+    for needle in [model_p10, rule_p10, ratio, strict_p10, f"all {n}", f"{n} different client splits"]:
         assert needle in cuts, f"Shareable cuts missing receipt-backed value: {needle}"
     url = Path("submission/paper_url.txt").read_text(encoding="utf-8").strip()
     assert url in cuts, "Social post must link the deployed paper"

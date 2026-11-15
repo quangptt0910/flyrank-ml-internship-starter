@@ -249,7 +249,7 @@
     <div class="abstract-box">
       <h2>Abstract</h2>
       <p>
-        FlyRank publishes and monitors content across many client websites, where pages that once ranked can quietly lose search visibility while editors can review only a few dozen a week, so the useful question is which pages to look at first: can a model trained on observable search and engagement signals rank pages that are losing impressions above a transparent hand-written rule, on clients it has never seen? We used the FlyRank ML Internship starter slice (30,000 anonymized pages from 32 clients, trailing 90-day Google Search Console and GA4 metrics) and labelled a page as declining when its last-30-day impressions fell more than 20% versus the previous 30 days. A gradient-boosted classifier was compared with our Week 4 striking-distance rule on identical client-grouped test sets, repeated over 20 different client splits so that no single lucky split carries the result. Across those splits the model's top-10 queue averaged <strong>89% declining pages</strong> (range 80–100%) against <strong>40%</strong> for the rule, and its top-50 averaged <strong>81%</strong> against <strong>47%</strong>, beating the rule on every split, while overall ranking quality stayed moderate (ROC-AUC 0.70 ± 0.06). We turn the scores into a ranked, reason-coded review queue for human editors: a decision-support tool for where to look first, not evidence that a refresh will cause recovery.
+        FlyRank publishes and monitors content across many client websites, where pages that once ranked can quietly lose search visibility while editors can review only a few dozen a week, so the useful question is which pages to look at first: can a model trained on observable search and engagement signals rank pages that are losing impressions above a transparent hand-written rule, on clients it has never seen? We used the FlyRank ML Internship starter slice (30,000 anonymized pages from 32 clients, trailing 90-day Google Search Console and GA4 metrics) and labelled a page as declining when its last-30-day impressions fell more than 20% versus the previous 30 days. A gradient-boosted classifier was compared with our Week 4 striking-distance rule on identical client-grouped test sets, repeated over 20 different client splits so that no single lucky split carries the result. Across those splits the model's top-10 queue averaged <strong>89% declining pages</strong> (range 80–100%) against <strong>40%</strong> for the rule, and its top-50 averaged <strong>81%</strong> against <strong>47%</strong>, beating the rule on every split. Part of that gain comes from 90-day features that overlap the label window: using only data from before it, the model still leads (top-10 72%, top-50 68%, ROC-AUC 0.63), but by less. We turn the scores into a ranked, reason-coded review queue for human editors: a decision-support tool for where to look first, not evidence that a refresh will cause recovery.
       </p>
     </div>
 
@@ -335,6 +335,7 @@
         <li>A code-level guard fails the run if any label source, 30-day window component or ID appears in the feature list.</li>
         <li>Positive control (Week 6): injecting the label arithmetic on purpose pushes AUC to ≈1.000, so the harness can detect leakage. The clean pipeline scores far below that.</li>
         <li>Random-row vs client-grouped comparison (Section 4.3) measures how much seeing the same client in training inflates scores.</li>
+        <li><strong>Overlapping windows (found in the ML-05 leakage check).</strong> The 90-day features include the last 30 days that define the label. None of them <em>is</em> the label, but they partly describe the same days. So every result is also reported for a <em>strict</em> model. It sees only traffic from days 61–90 (90-day total minus the last and previous 30 days, entirely before the label window) plus static page and keyword fields (Section 4.4).</li>
       </ul>
     </section>
 
@@ -343,27 +344,27 @@
 
       <h3>4.1 Across 20 client splits, the model's queue is about twice as accurate</h3>
       <figure>
-        <img src="figures/results_precision_at_k.png" alt="Dot-and-range chart: share of declining pages in the top 10, 20, 50 and 100 for the model and the Week 4 rule across 20 client splits, with the average base rate as a dashed line." loading="lazy">
-        <figcaption>Figure 1. Share of each top-k queue that was declining, on held-out clients. Dot = mean over 20 client splits, line = min–max. The model's top 10 averaged 0.89 and the rule's 0.40. The rule's average sits <em>below</em> the base rate at every k.</figcaption>
+        <img src="figures/results_precision_at_k.png" alt="Dot-and-range chart: share of declining pages in the top 10, 20, 50 and 100 for the model with 90-day features, the model with strict features, and the Week 4 rule across 20 client splits, with the average base rate as a dashed line." loading="lazy">
+        <figcaption>Figure 1. Share of each top-k queue that was declining, on held-out clients. Dot = mean over 20 client splits, line = min–max. Top 10: 0.89 for the model with 90-day features, 0.72 with strict features, 0.40 for the rule. The rule's average sits <em>below</em> the base rate at every k.</figcaption>
       </figure>
 
       <div class="table-container">
         <table>
           <thead>
-            <tr><th>20 client splits (mean ± sd)</th><th>Week 4 rule</th><th>Logistic regression</th><th>Gradient boosting</th></tr>
+            <tr><th>20 client splits (mean ± sd)</th><th>Week 4 rule</th><th>Gradient boosting, strict features</th><th>Logistic regression</th><th>Gradient boosting</th></tr>
           </thead>
           <tbody>
-            <tr><td>Precision@10</td><td>0.40 ± 0.13</td><td>0.82 ± 0.12</td><td><strong>0.89 ± 0.08</strong></td></tr>
-            <tr><td>Precision@20</td><td>0.44 ± 0.11</td><td>0.80 ± 0.09</td><td><strong>0.88 ± 0.09</strong></td></tr>
-            <tr><td>Precision@50</td><td>0.47 ± 0.14</td><td>0.78 ± 0.08</td><td><strong>0.81 ± 0.11</strong></td></tr>
-            <tr><td>Precision@100</td><td>0.47 ± 0.14</td><td>0.76 ± 0.09</td><td><strong>0.78 ± 0.11</strong></td></tr>
-            <tr><td>ROC-AUC</td><td>0.55 ± 0.04</td><td>0.67 ± 0.05</td><td><strong>0.70 ± 0.06</strong></td></tr>
-            <tr><td>Test base rate</td><td colspan="3">0.49 on average (range 0.26–0.61)</td></tr>
+            <tr><td>Precision@10</td><td>0.40 ± 0.13</td><td>0.72 ± 0.19</td><td>0.82 ± 0.12</td><td><strong>0.89 ± 0.08</strong></td></tr>
+            <tr><td>Precision@20</td><td>0.44 ± 0.11</td><td>0.70 ± 0.15</td><td>0.80 ± 0.09</td><td><strong>0.88 ± 0.09</strong></td></tr>
+            <tr><td>Precision@50</td><td>0.47 ± 0.14</td><td>0.68 ± 0.13</td><td>0.78 ± 0.08</td><td><strong>0.81 ± 0.11</strong></td></tr>
+            <tr><td>Precision@100</td><td>0.47 ± 0.14</td><td>0.67 ± 0.14</td><td>0.76 ± 0.09</td><td><strong>0.78 ± 0.11</strong></td></tr>
+            <tr><td>ROC-AUC</td><td>0.55 ± 0.04</td><td>0.63 ± 0.05</td><td>0.67 ± 0.05</td><td><strong>0.70 ± 0.06</strong></td></tr>
+            <tr><td>Test base rate</td><td colspan="4">0.49 on average (range 0.26–0.61)</td></tr>
           </tbody>
         </table>
       </div>
       <p>
-        The model beat the rule on all 20 splits for every metric, and its top-50 beat that split's own base rate on all 20. Single splits still vary a lot. Model Precision@50 ranged from 0.58 to 0.96, so a given week on a given client can look much worse than the average.
+        The model with 90-day features beat the rule on all 20 splits for every metric, and its top-50 beat that split's own base rate on all 20. The strict-feature model beat the rule on ROC-AUC in all 20 splits, and on top-10 precision in 16 of 20. Single splits still vary a lot. Model Precision@50 ranged from 0.58 to 0.96, so a given week on a given client can look much worse than the average.
       </p>
 
       <h3>4.2 The original Week 5 split was a hard draw</h3>
@@ -396,13 +397,33 @@
       <p>
         In Week 6 we reported a 0.163 AUC gap (0.783 random vs 0.620 grouped). That figure paired one random split with the hard seed-42 client split. Averaged over many splits, the inflation is about <strong>0.08 AUC</strong>. That is still large enough that a random split would mislead anyone onboarding a new client.
       </p>
+
+      <h3>4.4 Part of the gain comes from overlapping windows</h3>
+      <p>
+        A page's 90-day traffic includes the same last 30 days that decide its label. To measure how much that helps, the same model was retrained on <em>strict</em> features: traffic from days 61–90 only, plus static page and keyword fields, all known before the label window starts.
+      </p>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr><th>20 client splits (mean)</th><th>Precision@10</th><th>Precision@50</th><th>ROC-AUC</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Gradient boosting, 90-day features</td><td>0.89</td><td>0.81</td><td>0.70</td></tr>
+            <tr><td>Gradient boosting, strict features</td><td>0.72</td><td>0.68</td><td>0.63</td></tr>
+            <tr><td>Week 4 rule</td><td>0.40</td><td>0.47</td><td>0.55</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        About two-thirds of the model's lead over the rule at the top of the queue survives the strict cut (top 10: +0.49 becomes +0.33). The rest came from features that partly describe the label window. The strict model is also noisier: its top-10 precision ranged from 0.40 to 1.00 across splits. Read the 90-day numbers as an upper bound and the strict numbers as a more cautious estimate. A true forward-in-time test on the warehouse would settle it.
+      </p>
     </section>
 
     <section id="limitations">
       <h2>5. Limitations &amp; Honest Framing</h2>
       <ul>
         <li><strong>Starter slice, not the warehouse.</strong> All results come from 30,000 pages and 32 clients. They have not been reproduced on the ~79M-row warehouse release.</li>
-        <li><strong>One snapshot, not a forecast.</strong> Features and label come from the same export. The model ranks pages that <em>look like</em> recent decliners and has not been tested on a later, separate time period.</li>
+        <li><strong>One snapshot, overlapping windows, not a forecast.</strong> Features and label come from the same export, and the 90-day features overlap the label window. With strictly earlier features, top-10 precision drops from 0.89 to 0.72 (Section 4.4). The model ranks pages that <em>look like</em> recent decliners and has not been tested on a later, separate time period.</li>
         <li><strong>Decision support, not causal lift.</strong> A high score means "this page resembles pages that lost impressions", not "refreshing it will bring traffic back". No intervention was tested.</li>
         <li><strong>Few clients per test.</strong> Each test set holds 7 clients, and a top 10 is 10 pages. That is why we report means and ranges over 20 splits.</li>
         <li><strong>Model chosen with a test split in view.</strong> Gradient boosting was picked in Week 5 on the seed-42 split. Repeating over 20 splits reduces this optimism but does not remove it. A clean answer needs clients that were never looked at.</li>
@@ -427,7 +448,7 @@
 
       <h3>What to do first</h3>
       <ol>
-        <li><strong>Start each week from the top of the queue, not from the biggest pages.</strong> Across 20 client splits, the model's top 10 held about 89% declining pages and the impressions-ordered rule about 40%.</li>
+        <li><strong>Start each week from the top of the queue, not from the biggest pages.</strong> Across 20 client splits, the model's top 10 held 72–89% declining pages, depending on how strictly features are cut off before the label window. The impressions-ordered rule held about 40%.</li>
         <li><strong>Try the cheap fix first on striking-distance pages.</strong> Pages at positions 4–20 with CTR below 0.35% get a title and snippet rewrite before anything heavier.</li>
         <li><strong>Leave strong top-10 pages alone</strong> unless they show their own warning signs.</li>
         <li><strong>Measure every refresh</strong> against similar pages that were not refreshed, over 30–60 days. That is the only way to turn this ranking into evidence of impact.</li>
@@ -479,7 +500,8 @@
           <a href="https://github.com/quangptt0910/flyrank-ml-internship-starter/blob/main/work/notebooks/w05_model.ipynb">W5 models</a> ·
           <a href="https://github.com/quangptt0910/flyrank-ml-internship-starter/blob/main/work/notebooks/w06_validation_audit.ipynb">W6 validation audit</a> ·
           <a href="https://github.com/quangptt0910/flyrank-ml-internship-starter/blob/main/work/notebooks/w07_action_playbook.ipynb">W7 action playbook</a></li>
-        <li><strong>Receipts:</strong> <code>work/outputs/model_comparison.json</code>, <code>validation_audit_summary.json</code>, <code>robustness_summary.json</code> and <code>action_playbook_summary.json</code>.</li>
+        <li><strong>Leakage check (ML-05):</strong> <a href="https://github.com/quangptt0910/flyrank-ml-internship-starter/blob/main/work/notebooks/w03_feature_leakage_check.ipynb"><code>w03_feature_leakage_check.ipynb</code></a> covers feature notes, the positive control, the overlapping-window test and the privacy scan.</li>
+        <li><strong>Receipts:</strong> <code>work/outputs/model_comparison.json</code>, <code>validation_audit_summary.json</code>, <code>robustness_summary.json</code>, <code>leakage_check_summary.json</code> and <code>action_playbook_summary.json</code>.</li>
         <li><strong>To rerun:</strong> clone the repo, <code>pip install -r requirements.txt</code>, then run <code>capstone.ipynb</code> top to bottom (about a minute on a laptop). Seed 42 throughout. Tested with Python 3.13, scikit-learn 1.7.1, pandas 2.3.2 and numpy 2.4.3.</li>
       </ul>
     </section>

@@ -91,3 +91,14 @@ def test_ml12_paper_ties_findings_to_flyrank_case():
     assert "The FlyRank case" in html, "Introduction must contain the FlyRank case study"
     assert "What this means for FlyRank" in html, "Recommendations must map back to FlyRank's workflow"
     assert "does <strong>not</strong> compare against them" in html, "Must state production flags were not compared"
+
+
+def test_paper_strict_feature_numbers_match_receipts():
+    """The overlapping-window sensitivity check (ML-05) must be reported with receipt-backed numbers."""
+    html = DOCS_INDEX_PATH.read_text(encoding="utf-8")
+    s = _receipt("robustness_summary.json")["grouped"]["HistGradientBoosting (strict features)"]
+    for m in ["P@10", "P@20", "P@50", "P@100", "ROC-AUC"]:
+        needle = f"{s[m]['mean']:.2f} ± {s[m]['std']:.2f}"
+        assert needle in html, f"Paper missing strict-feature {m}: {needle}"
+    assert "4.4 Part of the gain comes from overlapping windows" in html
+    assert "w03_feature_leakage_check.ipynb" in html
