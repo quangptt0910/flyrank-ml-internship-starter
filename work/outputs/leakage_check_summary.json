@@ -1,0 +1,45 @@
+{
+  "dataset": "data/raw/content_refresh_anonymized.csv (starter slice)",
+  "n_client_grouped_splits": 10,
+  "single_column_suspects": [
+    "trend_pct"
+  ],
+  "feature_sets": {
+    "LEAK on purpose: + impressions last/prev 30d": {
+      "AUC_mean": 0.9981601083447021,
+      "P@10_mean": 1.0,
+      "P@50_mean": 1.0,
+      "base_rate_mean": 0.4841824365630555,
+      "AUC_sd": 0.0028641609170509453
+    },
+    "Paper features (90d windows + static)": {
+      "AUC_mean": 0.7012666024340712,
+      "P@10_mean": 0.8699999999999999,
+      "P@50_mean": 0.8,
+      "base_rate_mean": 0.4841824365630555,
+      "AUC_sd": 0.059166541423174394
+    },
+    "Strict: days 61-90 traffic + static": {
+      "AUC_mean": 0.6339017243201289,
+      "P@10_mean": 0.7500000000000001,
+      "P@50_mean": 0.6619999999999999,
+      "base_rate_mean": 0.4841824365630555,
+      "AUC_sd": 0.05593645601507185
+    },
+    "Static only (no traffic at all)": {
+      "AUC_mean": 0.5359188971197164,
+      "P@10_mean": 0.5700000000000001,
+      "P@50_mean": 0.552,
+      "base_rate_mean": 0.4841824365630555,
+      "AUC_sd": 0.03597775204118586
+    }
+  },
+  "week4_rule": {
+    "AUC": 0.5429497183965799,
+    "P@10": 0.39,
+    "P@50": 0.44000000000000006
+  },
+  "random_row_split_auc": 0.7792277045146209,
+  "product_flags_present": [],
+  "privacy_pattern_hits": 0
+}
